@@ -2529,6 +2529,44 @@ typedef struct {
     bool connect_err_reported;
 } TCPCharDriver;
 
+int qemu_chr_fe_send_msgfd(CharDriverState *chr, int fd,
+    void *udata, int udata_sz)
+{
+    TCPCharDriver *s = chr->opaque;
+	struct msghdr hdr;
+	struct iovec data;
+
+	char cmsgbuf[CMSG_SPACE(sizeof(int))];
+    int sock = s->fd > 0 ? s->fd : s->listen_fd;
+
+	data.iov_base = udata;
+	data.iov_len = udata_sz;
+
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.msg_name = NULL;
+	hdr.msg_namelen = 0;
+	hdr.msg_iov = &data;
+	hdr.msg_iovlen = 1;
+	hdr.msg_flags = 0;
+
+	hdr.msg_control = cmsgbuf;
+	hdr.msg_controllen = CMSG_LEN(sizeof(int));
+
+	struct cmsghdr* cmsg = CMSG_FIRSTHDR(&hdr);
+	cmsg->cmsg_len   = CMSG_LEN(sizeof(int));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type  = SCM_RIGHTS;
+
+	*(int*)CMSG_DATA(cmsg) = fd;
+
+	int n = sendmsg(sock, &hdr, 0);
+
+	if(n == -1)
+		error_report("sendmsg() failed: %s (socket fd = %d)\n",
+			strerror(errno), sock);
+	return n;
+}
+
 static gboolean socket_reconnect_timeout(gpointer opaque);
 
 static void qemu_chr_socket_restart_timer(CharDriverState *chr)

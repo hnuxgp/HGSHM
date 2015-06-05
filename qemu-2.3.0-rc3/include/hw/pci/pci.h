@@ -92,6 +92,9 @@
 #define PCI_DEVICE_ID_REDHAT_PCIE_HOST   0x0008
 #define PCI_DEVICE_ID_REDHAT_QXL         0x0100
 
+#define PCI_VENDOR_ID_HGSHM             0xBABE
+#define PCI_DEVICE_ID_HGSHM             0x07B9
+
 #define FMT_PCIBUS                      PRIx64
 
 typedef void PCIConfigWriteFunc(PCIDevice *pci_dev,

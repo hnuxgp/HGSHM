@@ -1,0 +1,92 @@
+The name stands initially for Host-Guest Shared Memory.
+
+Hgshm is a collection of modules that can share memory between host and
+multiple guests. Inside the guest, using the guest driver, a guest application
+can mmap shared memory. The shared memory is DMA capable and can be used
+to configure DMA engine on the host hardware.
+
+Qemu is booted with 'hgshm' PCI device. Following are the parameters that can
+be supplied to this device:
+
+Example for zero-index VM:
+	-chardev socket,id=chardev,path=/tmp/hgshmsock,server,nowait,nodelay \
+	-device hgshm,size=512m,chardev=chardev,guestmmap=1,unlink=0, \
+	shmid=hgshm-817279ee-269f-11e1-931d-003048f57204,index=0,clients=4
+
+Example for non-zero-index VM:
+	-chardev socket,id=chardev,path=/tmp/hgshmsock,nowait \
+	-device hgshm,shmid=hgshm-817279ee-269f-11e1-931d-003048f57204, \
+	chardev=chardev,guestmmap=1,index=1,mapidx=0
+
+/*
+ * index    : Index of the VM. Zero for SHM creator.
+ * size     : Size of shared mem, ignored for non-zero index
+ * clients  : Number of clients. Valid for zero-index VM and ignored
+			  for other VMs. Size and clients are used to calculate
+			  slice size of non-zero index VMs
+ * chardev  : Specified as server for zero index, non zero as client.
+			  Used to exchange event fds and slice size information.
+			  Client closes after exchange so that another client can
+			  exchange information with the zero-index VM
+ * shmid    : Shared memory id.
+			  If not specified for zero-index, one is created based on UUID
+			  Should be specified for non-zero index, the one created by
+			  zero index VM
+ * unlink   : Delete the shared memory. Valid only for zero-index
+			  Ignored for non-zero index VMs
+ * guestmmap: Used to prevent mmap completely from qemu cmd line.
+			  The guest driver can check HGSHM_FEATURE_GUEST_MMAP
+			  to determine shared memory is allowed or not
+ * mapidx   : Valid for non-zero index VM, ignored for zero-index.
+			  Index of the VM whose memory you want to map into bar2
+ */
+
+The zero index VM called the 'mapper' will create the shared memory
+and map it entirely to its PCI_BAR1. The specified memory area is
+divided into equal sized slices. Each non-zero indexed VM is provided
+a slice whose size is a function of total size and number of clients.
+	slice size = size / clients.
+
+For a non-zero indexed VM, slice address is always mapped to PCI_BAR1.
+mapidx can be used to map some other guest's memory into PCI_BAR3.
+Usually, in our case, mapidx for non-zero VM will be 0 so that
+PCI_BAR3 contains the address of slice0. This mechanism is used
+to transfer information between mapper and other VMs.
+
+It will open a chardev as server so that it can be used by other
+non-zero index VMs to exchange event fds and slice size information.
+Event FDs are used to interrupt the guest without VM-exit or
+context switch.
+
+guestmap can be used to prevent exporting of shared memory, 0=dis-allow,
+1=allow.
+
+Once the device is specified with appropriate options, the guest will have
+the memory mapped into its address space via PCI_BAR{1,3}. A guest driver
+for this PCI device can be used to mmap this to user space. Sample
+driver is provided that can mmap the memory and also send interrupts
+using to other VMs using IOCTLs in the guest.
+
+This currently works on linux host running QEMU and Linux guests.
+
+Following is the code organization:
+
+guser:
+	Sample guest user program that maps the shared memory into
+	user space with the aid of a guest device driver. This imlements
+    MapReduce like application.
+
+lnx_gkernel:
+	Sample guest device driver to drive the PCI device presented
+	to the guest by QEMU
+
+qemu-2.3.0-rc3:
+	Qemu code that implements this new PCI device
+
+launcher:
+	Sample shell script that can be used to spin up a VM with
+	this new device.
+
+clientserver:
+    Sample VIRTIO test program to measure performance of MapReduce
+    like application.`

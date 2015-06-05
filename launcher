@@ -1,0 +1,43 @@
+#!/bin/bash
+vmid=$1;
+if [ -z "$vmid" ]; then
+    echo "Specify VM ID"
+    exit 1;
+fi
+
+let "vnc=200+${vmid}"
+let "serial=15000+${vmid}"
+let "gdb=20000+${vmid}"
+let "monitor=25000+${vmid}"
+if [ $vmid -lt 10 ]; then
+    uuid=3c998983-c03e-4b30-9766-16a38d57dae${vmid}
+    mac=56:70:59:7a:97:9${vmid}
+else
+    uuid=3c998983-c03e-4b30-9766-16a38d57da${vmid}
+    mac=56:70:59:7a:97:${vmid}
+fi
+host=virus04
+shmid=hgshm-817279ee-269f-11e1-931d-003048f57204
+disk=/root/disks/ubuntu-12.04.1-server-amd64-hda.qcow2
+sock=/tmp/hgshmsock
+RO=-snapshot
+cpus=6 # for vmid 0
+ifacetype=virtio-net-pci
+
+shmdev="-chardev socket,id=chardev,path=$sock,server,nowait,nodelay"
+shmdev+=" -device hgshm,size=1g,chardev=chardev,guestmmap=1,unlink=1,"
+shmdev+="shmid=$shmid,index=0,clients=4"
+
+shmdevn="-chardev socket,id=chardev,path=$sock,nowait"
+shmdevn+=" -device hgshm,shmid=$shmid,"
+shmdevn+="chardev=chardev,guestmmap=1,index=$vmid,mapidx=0"
+
+if [ $vmid -ne 0 ]; then
+    shmdev=$shmdevn
+    cpus=2;
+fi
+
+cmd="/root/qemu-2.3.0-rc3/x86_64-softmmu/qemu-system-x86_64 -smp $cpus -enable-kvm -m 6G $RO -hda $disk -L /root/qemu-2.3.0-rc3/pc-bios -serial telnet:$host:$serial,nowait,server -vnc $host:$vnc -gdb telnet:$host:$gdb,nowait,server --uuid $uuid -monitor tcp:$host:$monitor,server,nowait,nodelay -device $ifacetype,netdev=netdev0,mac=$mac -netdev tap,id=netdev0,script=/root/netscripts/net0-ifup,downscript=no $shmdev"
+
+echo $cmd;
+eval $cmd;

@@ -268,6 +268,15 @@ int qemu_chr_fe_get_msgfds(CharDriverState *s, int *fds, int num);
 int qemu_chr_fe_set_msgfds(CharDriverState *s, int *fds, int num);
 
 /**
+ * @qemu_chr_fe_send_msgfd
+ *
+ * Sends fd to the connected backend and returns num of bytes sent.
+ *
+ * Returns: -1 if error occured while sending
+ */
+int qemu_chr_fe_send_msgfd(CharDriverState *s, int fd, void *udata, int udata_sz);
+
+/**
  * @qemu_chr_fe_claim:
  *
  * Claim a backend before using it, should be called before calling

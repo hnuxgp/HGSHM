@@ -1,0 +1,9 @@
+#!/bin/bash
+insmod /root/hgshm.ko
+idx=`/root/hgshm /dev/hgshm0 -h`;
+let "octet4=$idx+10";
+ifconfig eth0 8.8.8.$octet4/24 up
+hname="vm$idx"
+echo "127.0.0.1 $hname" >> /etc/hosts;
+echo "$hname" > /etc/hostname;
+hostname $hname
