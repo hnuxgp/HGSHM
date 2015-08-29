@@ -137,7 +137,7 @@ static void callback(void *arg)
             ptr[(myindex * 2) + 1] = dowork(shmptr[0], shm_slice_sz);
             ptr[(myindex * 2) + 0] = MAGIC;
 #ifndef POLLING
-            printf("NOTIFY 0\n");
+//            printf("NOTIFY 0\n");
             if (hgshm_notify(0) < 0)
                 printf("Could not notify index 0\n");
 #endif
@@ -149,7 +149,7 @@ static void callback(void *arg)
 
 static void worker0(void *arg)
 {
-    printf("Worker %d INDEX: %d. Got new work\n", counter++, myindex);
+//    printf("Worker %d INDEX: %d. Got new work\n", counter++, myindex);
     int32_t *ptr = (int32_t *)shmptr[0];
     ptr[(myindex * 2) + 1] = dowork(shmptr[0], shm_slice_sz);
     ptr[(myindex * 2) + 0] = MAGIC;
@@ -160,7 +160,7 @@ static void worker0(void *arg)
 
 void print_usage(char *pgm, int ec)
 {
-    printf("Usage: %s <dev> <GB>\n", pgm);
+    printf("Usage: %s <dev> <GB> [num reducers]\n", pgm);
     if (ec)
         exit(ec);
 }
@@ -178,7 +178,7 @@ void doxfer (void *arg)
         int32_t *ptr = (int32_t *)shmptr[0];
         ptr[8192 + (dt->dindex * 2)] = MAGIC;
 #else
-        printf("NOTIFY %d\n", dt->dindex);
+//        printf("NOTIFY %d\n", dt->dindex);
         if (hgshm_notify(dt->dindex) < 0)
             printf("Could not notify index %d\n", dt->dindex);
 #endif
@@ -208,6 +208,11 @@ int main (int argc, char *argv[])
         printf("%d\n", myindex);
         exit(0);
     }
+#ifdef POLLING
+    printf("Polling mode\n");
+#else
+    printf("Interrupt mode\n");
+#endif
     shmptr[0] = hgshm_getshm(0, &shm_sz);
     shmptr[1] = hgshm_getshm(1, &shm_slice_sz);
 

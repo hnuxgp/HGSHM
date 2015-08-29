@@ -127,6 +127,7 @@ void clientthr(void *arg)
         exit(1);
     }
     if(connect(sockfd, addr, addrlen) == -1) {
+        printf("IP: %s\n", cookie->ip);
         perror("Client-connect() error");
         exit(1);
     }
@@ -156,11 +157,17 @@ int main(int argc, char *argv[ ])
 
     pthread_t *tids = malloc(sizeof(pthread_t) * nservers);
     cookie_t *cookies = malloc(sizeof(cookie_t) * nservers);
-    char *buf = malloc(MAXBUFLEN);
     int count = sz / nservers / MAXBUFLEN;
+    char **bufptrs = malloc(sizeof (char*)*count);
     printf("Count: %d, nservers: %d\n", count, nservers);
 
+    for (i = 0; i < count; i++)
+        bufptrs[i] = malloc(MAXBUFLEN);
+
     while (count--) {
+        char *buf = bufptrs[count];
+//        for (i = 0; i < MAXBUFLEN; i++)
+//            buf[i] = (char)random();
         for (i = 0; i < nservers; i++) {
             cookies[i].ip = ips[i];
             cookies[i].port = 10000;
@@ -183,6 +190,7 @@ int main(int argc, char *argv[ ])
     printf("%d %ld\n", insz, elapsed);
     free(cookies);
     free(tids);
-    free(buf);
+    for (i = 0; i < count; i++)
+        free(bufptrs[i]);
     return 0;
 }
